@@ -1,0 +1,101 @@
+import type { QuestDefinition } from "./types";
+
+export const questDefinitions: QuestDefinition[] = [
+  {
+    id: "archive-box-17",
+    title: "Recover Archive Box 17",
+    summary: "Retrieve a missing archive box hidden somewhere between the library stacks and North Hall rumor routes.",
+    giver: "Mina, Night Archivist",
+    zone: "north-hall",
+    objectives: [
+      { id: "accept", label: "Accept the quest from the board", completionFlag: "quest:archive-box-17:accepted" },
+      { id: "recover-box", label: "Reach the hidden archive room in North Hall and locate Box 17 with your search pulse", completionFlag: "quest:archive-box-17:box-recovered" },
+      { id: "turn-in", label: "Return the box to Mina in the Library", completionFlag: "quest:archive-box-17:completed" },
+    ],
+    rewards: {
+      xp: 40,
+      reputation: { "it-operations": 1, archivists: 2 },
+      tools: ["visitor-badge"],
+      lore: ["Archive box notes hint at a pattern connecting South Hall outages to sealed Main Hall rooms."],
+    },
+    prerequisites: [],
+    urgency: "moderate",
+    tier: "early",
+    tags: ["archives", "north-hall", "puzzle", "starter"],
+    storyCritical: true,
+    preferredResolution: "puzzle",
+    boardUnlockTrust: {
+      archivists: 1,
+    },
+    focusSplit: {
+      itLearning: 30,
+      fun: 40,
+      antiochLore: 30,
+    },
+  },
+  {
+    id: "badge-failure",
+    title: "Patch the Badge-Access Failure",
+    summary: "Use your newly issued visitor badge to enter South Hall and stop a cascading access control failure.",
+    giver: "Terry, Operations Lead",
+    zone: "south-hall",
+    objectives: [
+      { id: "accept", label: "Accept the incident from the board", completionFlag: "quest:badge-failure:accepted" },
+      { id: "enter-south-hall", label: "Use the visitor badge to access South Hall", completionFlag: "quest:badge-failure:entered-south-hall", requiredTool: "visitor-badge" },
+      { id: "reset-racks", label: "Reset the affected control rack", completionFlag: "quest:badge-failure:rack-reset" },
+      { id: "audit-logs", label: "Audit the controller logs for the source of the failure", completionFlag: "quest:badge-failure:logs-audited" },
+      { id: "turn-in", label: "Report back to Terry", completionFlag: "quest:badge-failure:completed" },
+    ],
+    rewards: {
+      xp: 80,
+      reputation: { "it-operations": 2, administrators: 1 },
+      keys: ["main-hall-stage-key"],
+      lore: [
+        "Someone routed South Hall access logs through a ghost process named NERO.",
+        "A hidden note references a cache of Rod Serling transcripts near South Hall's Oval marker.",
+      ],
+    },
+    prerequisites: ["quest:archive-box-17:completed"],
+    urgency: "urgent",
+    tier: "early",
+    tags: ["south-hall", "systems", "access", "story"],
+    storyCritical: true,
+    preferredResolution: "mixed",
+    focusSplit: {
+      itLearning: 40,
+      fun: 30,
+      antiochLore: 30,
+    },
+  },
+  {
+    id: "north-hall-disturbance",
+    title: "Quiet the North Hall Disturbance",
+    summary: "Investigate the late-night noise complaint before a goose mob turns it into a campus legend.",
+    giver: "Rae, Resident Assistant",
+    zone: "north-hall",
+    objectives: [
+      { id: "accept", label: "Accept the dorm request", completionFlag: "quest:north-hall-disturbance:accepted" },
+      { id: "resolve", label: "Resolve the disturbance through dialogue or a quick scare", completionFlag: "quest:north-hall-disturbance:resolved" },
+      { id: "turn-in", label: "Report back to Rae", completionFlag: "quest:north-hall-disturbance:completed" },
+    ],
+    rewards: {
+      xp: 35,
+      reputation: { "student-residents": 2 },
+      lore: [
+        "The disturbance traces back to a rehearsal recording from Main Hall.",
+        "Students swear the old Shakespeare Festival still leaks into dorm walls when the campus gets quiet enough.",
+      ],
+    },
+    prerequisites: [],
+    urgency: "routine",
+    tier: "early",
+    tags: ["dorm", "dialogue", "comedy"],
+    storyCritical: false,
+    preferredResolution: "dialogue",
+    focusSplit: {
+      itLearning: 20,
+      fun: 50,
+      antiochLore: 30,
+    },
+  },
+];
