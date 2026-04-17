@@ -298,6 +298,11 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private drawInterior(location: BuildingId): void {
+    if (location === "library") {
+      this.drawLibraryInterior();
+      return;
+    }
+
     const room = this.add.rectangle(70, 70, 1060, 580, 0xf4e9cf, 0.08).setOrigin(0).setStrokeStyle(3, 0xf4e9cf, 0.2);
     const divider = this.add.rectangle(285, 70, 20, 580, zoneTint(location), 0.52).setOrigin(0);
     const hallRunner = this.add.rectangle(305, 260, 770, 80, 0xffffff, 0.05).setOrigin(0);
@@ -309,14 +314,6 @@ export class GameplayScene extends Phaser.Scene {
       wordWrap: { width: 660 },
     });
     this.drawings.push(room, divider, hallRunner, sidePanel, loreLabel);
-
-    if (location === "library") {
-      this.drawings.push(
-        this.add.rectangle(355, 205, 320, 24, 0x4b5f70, 0.5).setOrigin(0),
-        this.add.rectangle(355, 425, 420, 22, 0x4b5f70, 0.35).setOrigin(0),
-      );
-    }
-
     if (location === "north-hall") {
       this.drawings.push(
         this.add.rectangle(350, 190, 180, 130, 0x89617d, 0.12).setOrigin(0),
@@ -336,6 +333,82 @@ export class GameplayScene extends Phaser.Scene {
         this.add.ellipse(610, 340, 440, 230, 0x62384e, 0.12),
         this.add.rectangle(425, 200, 370, 260, 0xf3d9bb, 0.05).setStrokeStyle(2, 0xf3d9bb, 0.15),
       );
+    }
+  }
+
+  private drawLibraryInterior(): void {
+    const outer = this.add.rectangle(60, 60, 1080, 600, 0xefe7d1, 0.1).setOrigin(0).setStrokeStyle(3, 0xe3d8bd, 0.28);
+    const brickBand = this.add.rectangle(90, 92, 1020, 126, 0x8c6d54, 0.34).setOrigin(0).setStrokeStyle(2, 0xdac6a7, 0.16);
+    const windowBayA = this.add.rectangle(120, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
+    const windowBayB = this.add.rectangle(350, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
+    const windowBayC = this.add.rectangle(580, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
+    const windowBayD = this.add.rectangle(810, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
+    const leftVestibule = this.add.rectangle(90, 230, 188, 360, 0x172028, 0.28).setOrigin(0).setStrokeStyle(2, 0xaab7bf, 0.18);
+    const vestibuleGlass = this.add.rectangle(118, 260, 130, 150, 0x9ac2cf, 0.22).setOrigin(0).setStrokeStyle(3, 0xd2e6ee, 0.18);
+    const circulationDesk = this.add.rectangle(520, 255, 310, 68, 0x705844, 0.82).setOrigin(0).setStrokeStyle(2, 0xe8d2b0, 0.25);
+    const circulationTop = this.add.rectangle(520, 255, 310, 18, 0xa7825f, 0.95).setOrigin(0);
+    const readingTableA = this.add.rectangle(420, 430, 156, 72, 0x735744, 0.82).setStrokeStyle(2, 0xd9c09b, 0.22);
+    const readingTableB = this.add.rectangle(640, 430, 156, 72, 0x735744, 0.82).setStrokeStyle(2, 0xd9c09b, 0.22);
+    const stackWallA = this.add.rectangle(870, 260, 180, 84, 0x433a31, 0.84).setOrigin(0).setStrokeStyle(2, 0xcbba98, 0.16);
+    const stackWallB = this.add.rectangle(870, 365, 180, 84, 0x433a31, 0.84).setOrigin(0).setStrokeStyle(2, 0xcbba98, 0.16);
+    const cShopNook = this.add.rectangle(845, 515, 220, 88, 0x4e5e50, 0.55).setOrigin(0).setStrokeStyle(2, 0xd6cbac, 0.14);
+    const archiveStair = this.add.polygon(0, 0, [235, 520, 318, 520, 360, 430, 278, 430], 0x666674, 0.58).setOrigin(0).setStrokeStyle(2, 0xd9d7cb, 0.22);
+    const rug = this.add.rectangle(603, 540, 475, 95, 0x4a5c71, 0.22).setStrokeStyle(2, 0xd5c6a8, 0.14);
+    const caption = this.add.text(330, 110, "Olive Kettering Library\n1950s mid-century exterior glazing, a circulation-centered main floor, and Antiochiana up above.", {
+      color: "#edf6ef",
+      fontFamily: "Georgia",
+      fontSize: "22px",
+      wordWrap: { width: 650 },
+    });
+    const stairLabel = this.add.text(192, 452, "ANTIOCHIANA\nUPSTAIRS", {
+      color: "#efe1bf",
+      fontFamily: "Georgia",
+      fontSize: "20px",
+      align: "center",
+    });
+    const cShopLabel = this.add.text(886, 536, "C-SHOP / STUDENT COMMONS", {
+      color: "#eef2dc",
+      fontFamily: "Georgia",
+      fontSize: "16px",
+    });
+    const deskLabel = this.add.text(575, 243, "CIRCULATION / REFERENCE", {
+      color: "#f2e4c1",
+      fontFamily: "Georgia",
+      fontSize: "16px",
+    });
+
+    this.drawings.push(
+      outer,
+      brickBand,
+      windowBayA,
+      windowBayB,
+      windowBayC,
+      windowBayD,
+      leftVestibule,
+      vestibuleGlass,
+      circulationDesk,
+      circulationTop,
+      readingTableA,
+      readingTableB,
+      stackWallA,
+      stackWallB,
+      cShopNook,
+      archiveStair,
+      rug,
+      caption,
+      stairLabel,
+      cShopLabel,
+      deskLabel,
+    );
+
+    for (let i = 0; i < 5; i += 1) {
+      this.drawings.push(this.add.rectangle(890 + i * 28, 292, 16, 46, 0xb89b6d, 0.58).setOrigin(0));
+      this.drawings.push(this.add.rectangle(890 + i * 28, 397, 16, 46, 0x9d8c6b, 0.58).setOrigin(0));
+    }
+
+    for (let i = 0; i < 6; i += 1) {
+      this.drawings.push(this.add.rectangle(458 + i * 16, 418, 10, 34, 0xe5dfcf, 0.25).setStrokeStyle(1, 0xd7cfbe, 0.16));
+      this.drawings.push(this.add.rectangle(678 + i * 16, 418, 10, 34, 0xe5dfcf, 0.25).setStrokeStyle(1, 0xd7cfbe, 0.16));
     }
   }
 
@@ -804,7 +877,7 @@ function zoneSpawn(location: BuildingId): { x: number; y: number } {
 function interiorCaption(location: BuildingId): string {
   switch (location) {
     case "library":
-      return "Library / IT Operations\nA soft pool of terminals, racks, and archive desks now frames the quest board like an occult help desk.";
+      return "Olive Kettering Library\nA circulation-centered library floor with public catalog access, student commons energy, and Antiochiana overhead.";
     case "north-hall":
       return "North Hall\nDorm lounge pockets, rumor corners, and suspicious radiator caches make the building feel lived in.";
     case "north-hall-archive-room":

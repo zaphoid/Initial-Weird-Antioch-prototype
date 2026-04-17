@@ -55,8 +55,8 @@ export function createInteractables(
     library: [
       {
         id: "quest-board",
-        x: 310,
-        y: 190,
+        x: 300,
+        y: 355,
         radius: 44,
         label: "Quest Board",
         onInteract: () => {
@@ -66,8 +66,8 @@ export function createInteractables(
       },
       {
         id: "mina-turn-in",
-        x: 660,
-        y: 250,
+        x: 674,
+        y: 316,
         radius: 42,
         label: "Mina, Night Archivist",
         onInteract: () => {
@@ -102,8 +102,8 @@ export function createInteractables(
       },
       {
         id: "terry-turn-in",
-        x: 780,
-        y: 420,
+        x: 930,
+        y: 485,
         radius: 42,
         label: "Terry, Operations Lead",
         onInteract: () => {
