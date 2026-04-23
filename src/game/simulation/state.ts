@@ -36,7 +36,7 @@ export function createInitialGameState(): GameState {
     discoveredLore: [],
     debugEnabled: true,
     ui: {
-      questBoardOpen: true,
+      questBoardOpen: false,
       debugPanelOpen: false,
       selectedQuestId: "archive-box-17",
       filters: { building: "all", urgency: "all", tier: "all" },

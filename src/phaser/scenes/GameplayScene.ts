@@ -84,14 +84,15 @@ export class GameplayScene extends Phaser.Scene {
     this.zoneLabel = this.add.text(24, 22, "", {
       color: palette.text,
       fontFamily: "Georgia",
-      fontSize: "28px",
-    }).setScrollFactor(0);
+      fontSize: "16px",
+    }).setScrollFactor(0).setAlpha(0.72);
 
     this.hintLabel = this.add.text(24, 54, "", {
       color: "#afc4ba",
       fontFamily: "Georgia",
-      fontSize: "14px",
-    }).setScrollFactor(0);
+      fontSize: "11px",
+      wordWrap: { width: 420 },
+    }).setScrollFactor(0).setAlpha(0.72);
 
     this.playerShadow = this.add.ellipse(0, 0, 20, 9, 0x000000, 0.18);
     this.player = this.add.sprite(0, 0, "player-sheet", 0).setScale(1.35);
@@ -122,6 +123,11 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
+    if (isTextInputActive()) {
+      this.updateMovementAnimation(0, 0, false);
+      return;
+    }
+
     const running = isActionDown(this.bindings, "run");
     const speed = (running ? 0.34 : 0.2) * deltaMs;
     let dx = 0;
@@ -184,8 +190,9 @@ export class GameplayScene extends Phaser.Scene {
   private syncPlayer(): void {
     const { x, y } = this.state.player.position;
     const firstPersonRoom = this.isFirstPersonArchiveRoom();
-    this.player.setPosition(x, y - (this.airborne ? 10 : 0));
-    this.playerShadow.setPosition(x, y + 10);
+    const display = this.projectDisplayPoint(x, y);
+    this.player.setPosition(display.x, display.y - (this.airborne ? 10 : 0));
+    this.playerShadow.setPosition(display.x, display.y + 10);
     this.player.setVisible(!firstPersonRoom);
     this.playerShadow.setVisible(!firstPersonRoom);
     if (this.archiveReticle) {
@@ -211,7 +218,7 @@ export class GameplayScene extends Phaser.Scene {
     this.searchPulseTween = undefined;
     this.searchPulseGraphic?.destroy();
     this.searchPulseGraphic = undefined;
-    const background = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, zoneTint(location)).setOrigin(0);
+    const background = this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, location === "library" ? 0xd8d0c3 : zoneTint(location)).setOrigin(0);
     this.drawings.push(background);
 
     if (location === "campus") {
@@ -237,8 +244,9 @@ export class GameplayScene extends Phaser.Scene {
       this.drawArchiveRoomMarkers();
     } else {
       for (const portal of this.portals) {
-        const marker = this.add.circle(portal.x, portal.y, 44, 0xffffff, 0.12).setStrokeStyle(2, 0xffffff, 0.32);
-        const pulse = this.add.circle(portal.x, portal.y, 30, 0xd7bb63, 0.18).setStrokeStyle(1, 0xd7bb63, 0.35);
+        const portalPoint = this.projectDisplayPoint(portal.x, portal.y, 2);
+        const marker = this.add.ellipse(portalPoint.x, portalPoint.y, 78, 36, 0xffffff, 0.12).setStrokeStyle(2, 0xffffff, 0.32);
+        const pulse = this.add.ellipse(portalPoint.x, portalPoint.y, 54, 24, 0xd7bb63, 0.18).setStrokeStyle(1, 0xd7bb63, 0.35);
         this.tweens.add({
           targets: pulse,
           scale: 1.25,
@@ -247,21 +255,29 @@ export class GameplayScene extends Phaser.Scene {
           yoyo: true,
           repeat: -1,
         });
-        const label = this.add.text(portal.x - 56, portal.y - 12, portal.label, {
+        const label = this.add.text(portalPoint.x - 56, portalPoint.y - 42, portal.label, {
           color: palette.text,
           fontFamily: "Georgia",
           fontSize: "15px",
-        });
+        }).setVisible(location !== "library");
         this.drawings.push(marker, pulse, label);
       }
 
       for (const interactable of this.interactables) {
-        const marker = this.add.circle(interactable.x, interactable.y, interactable.radius, 0xe7d078, 0.1).setStrokeStyle(2, 0xe7d078, 0.45);
-        const label = this.add.text(interactable.x - 72, interactable.y - 30, interactable.label, {
+        const interactPoint = this.projectDisplayPoint(interactable.x, interactable.y, 2);
+        const marker = this.add.ellipse(
+          interactPoint.x,
+          interactPoint.y,
+          interactable.radius * 1.6,
+          interactable.radius * 0.76,
+          0xe7d078,
+          0.1,
+        ).setStrokeStyle(2, 0xe7d078, 0.45);
+        const label = this.add.text(interactPoint.x - 72, interactPoint.y - 42, interactable.label, {
           color: "#f8e5a4",
           fontFamily: "Georgia",
           fontSize: "15px",
-        });
+        }).setVisible(location !== "library");
         this.drawings.push(marker, label);
       }
     }
@@ -295,6 +311,81 @@ export class GameplayScene extends Phaser.Scene {
       wordWrap: { width: 680 },
     });
     this.drawings.push(northLawn, centralPath, westPath, eastPath, southLoop, quad, libraryBlock, northBlock, southBlock, mainBlock, pond, note);
+  }
+
+  private usesIsometricProjection(): boolean {
+    return this.state.player.location === "library";
+  }
+
+  private projectDisplayPoint(x: number, y: number, z = 0): { x: number; y: number } {
+    if (!this.state || !this.usesIsometricProjection()) {
+      return { x, y: y - z };
+    }
+
+    const dx = x - WORLD_WIDTH / 2;
+    const dy = y - WORLD_HEIGHT / 2;
+    return {
+      x: WORLD_WIDTH / 2 + (dx - dy) * 0.55,
+      y: 210 + (dx + dy) * 0.28 - z,
+    };
+  }
+
+  private addIsoTile(cx: number, cy: number, width: number, depth: number, color: number, alpha = 1, stroke = 0x191611): Phaser.GameObjects.Polygon {
+    const north = this.projectDisplayPoint(cx, cy - depth / 2);
+    const east = this.projectDisplayPoint(cx + width / 2, cy);
+    const south = this.projectDisplayPoint(cx, cy + depth / 2);
+    const west = this.projectDisplayPoint(cx - width / 2, cy);
+    const tile = this.add.polygon(0, 0, [north.x, north.y, east.x, east.y, south.x, south.y, west.x, west.y], color, alpha)
+      .setOrigin(0)
+      .setStrokeStyle(2, stroke, 0.58);
+    this.drawings.push(tile);
+    return tile;
+  }
+
+  private addIsoBlock(
+    cx: number,
+    cy: number,
+    width: number,
+    depth: number,
+    height: number,
+    topColor: number,
+    leftColor: number,
+    rightColor: number,
+    alpha = 1,
+  ): void {
+    const topNorth = this.projectDisplayPoint(cx, cy - depth / 2, height);
+    const topEast = this.projectDisplayPoint(cx + width / 2, cy, height);
+    const topSouth = this.projectDisplayPoint(cx, cy + depth / 2, height);
+    const topWest = this.projectDisplayPoint(cx - width / 2, cy, height);
+    const baseEast = this.projectDisplayPoint(cx + width / 2, cy);
+    const baseSouth = this.projectDisplayPoint(cx, cy + depth / 2);
+    const baseWest = this.projectDisplayPoint(cx - width / 2, cy);
+    const rightFace = this.add.polygon(0, 0, [
+      topEast.x, topEast.y,
+      topSouth.x, topSouth.y,
+      baseSouth.x, baseSouth.y,
+      baseEast.x, baseEast.y,
+    ], rightColor, alpha).setOrigin(0).setStrokeStyle(1, 0x17120d, 0.52);
+    const leftFace = this.add.polygon(0, 0, [
+      topSouth.x, topSouth.y,
+      topWest.x, topWest.y,
+      baseWest.x, baseWest.y,
+      baseSouth.x, baseSouth.y,
+    ], leftColor, alpha).setOrigin(0).setStrokeStyle(1, 0x17120d, 0.52);
+    const top = this.add.polygon(0, 0, [
+      topNorth.x, topNorth.y,
+      topEast.x, topEast.y,
+      topSouth.x, topSouth.y,
+      topWest.x, topWest.y,
+    ], topColor, alpha).setOrigin(0).setStrokeStyle(2, 0x22180e, 0.62);
+    this.drawings.push(rightFace, leftFace, top);
+  }
+
+  private addIsoLine(x1: number, y1: number, x2: number, y2: number, color: number, alpha = 0.24): void {
+    const from = this.projectDisplayPoint(x1, y1, 1);
+    const to = this.projectDisplayPoint(x2, y2, 1);
+    const line = this.add.line(0, 0, from.x, from.y, to.x, to.y, color, alpha).setOrigin(0).setLineWidth(1);
+    this.drawings.push(line);
   }
 
   private drawInterior(location: BuildingId): void {
@@ -337,79 +428,139 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private drawLibraryInterior(): void {
-    const outer = this.add.rectangle(60, 60, 1080, 600, 0xefe7d1, 0.1).setOrigin(0).setStrokeStyle(3, 0xe3d8bd, 0.28);
-    const brickBand = this.add.rectangle(90, 92, 1020, 126, 0x8c6d54, 0.34).setOrigin(0).setStrokeStyle(2, 0xdac6a7, 0.16);
-    const windowBayA = this.add.rectangle(120, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
-    const windowBayB = this.add.rectangle(350, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
-    const windowBayC = this.add.rectangle(580, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
-    const windowBayD = this.add.rectangle(810, 110, 210, 94, 0x94b8c6, 0.3).setOrigin(0).setStrokeStyle(4, 0xd7e4ea, 0.22);
-    const leftVestibule = this.add.rectangle(90, 230, 188, 360, 0x172028, 0.28).setOrigin(0).setStrokeStyle(2, 0xaab7bf, 0.18);
-    const vestibuleGlass = this.add.rectangle(118, 260, 130, 150, 0x9ac2cf, 0.22).setOrigin(0).setStrokeStyle(3, 0xd2e6ee, 0.18);
-    const circulationDesk = this.add.rectangle(520, 255, 310, 68, 0x705844, 0.82).setOrigin(0).setStrokeStyle(2, 0xe8d2b0, 0.25);
-    const circulationTop = this.add.rectangle(520, 255, 310, 18, 0xa7825f, 0.95).setOrigin(0);
-    const readingTableA = this.add.rectangle(420, 430, 156, 72, 0x735744, 0.82).setStrokeStyle(2, 0xd9c09b, 0.22);
-    const readingTableB = this.add.rectangle(640, 430, 156, 72, 0x735744, 0.82).setStrokeStyle(2, 0xd9c09b, 0.22);
-    const stackWallA = this.add.rectangle(870, 260, 180, 84, 0x433a31, 0.84).setOrigin(0).setStrokeStyle(2, 0xcbba98, 0.16);
-    const stackWallB = this.add.rectangle(870, 365, 180, 84, 0x433a31, 0.84).setOrigin(0).setStrokeStyle(2, 0xcbba98, 0.16);
-    const cShopNook = this.add.rectangle(845, 515, 220, 88, 0x4e5e50, 0.55).setOrigin(0).setStrokeStyle(2, 0xd6cbac, 0.14);
-    const archiveStair = this.add.polygon(0, 0, [235, 520, 318, 520, 360, 430, 278, 430], 0x666674, 0.58).setOrigin(0).setStrokeStyle(2, 0xd9d7cb, 0.22);
-    const rug = this.add.rectangle(603, 540, 475, 95, 0x4a5c71, 0.22).setStrokeStyle(2, 0xd5c6a8, 0.14);
-    const caption = this.add.text(330, 110, "Olive Kettering Library\n1950s mid-century exterior glazing, a circulation-centered main floor, and Antiochiana up above.", {
-      color: "#edf6ef",
-      fontFamily: "Georgia",
-      fontSize: "22px",
-      wordWrap: { width: 650 },
-    });
-    const stairLabel = this.add.text(192, 452, "ANTIOCHIANA\nUPSTAIRS", {
-      color: "#efe1bf",
-      fontFamily: "Georgia",
-      fontSize: "20px",
-      align: "center",
-    });
-    const cShopLabel = this.add.text(886, 536, "C-SHOP / STUDENT COMMONS", {
-      color: "#eef2dc",
-      fontFamily: "Georgia",
-      fontSize: "16px",
-    });
-    const deskLabel = this.add.text(575, 243, "CIRCULATION / REFERENCE", {
-      color: "#f2e4c1",
-      fontFamily: "Georgia",
-      fontSize: "16px",
-    });
+    const addIsoLabel = (x: number, y: number, label: string, size = 13, color = "#f3e6b7", z = 18): void => {
+      const point = this.projectDisplayPoint(x, y, z);
+      const text = this.add.text(point.x, point.y, label, {
+        color,
+        fontFamily: "Georgia",
+        fontSize: `${size}px`,
+        align: "center",
+        wordWrap: { width: 190 },
+      }).setOrigin(0.5);
+      this.drawings.push(text);
+    };
 
-    this.drawings.push(
-      outer,
-      brickBand,
-      windowBayA,
-      windowBayB,
-      windowBayC,
-      windowBayD,
-      leftVestibule,
-      vestibuleGlass,
-      circulationDesk,
-      circulationTop,
-      readingTableA,
-      readingTableB,
-      stackWallA,
-      stackWallB,
-      cShopNook,
-      archiveStair,
-      rug,
-      caption,
-      stairLabel,
-      cShopLabel,
-      deskLabel,
-    );
+    const addPottedPlant = (x: number, y: number): void => {
+      const base = this.projectDisplayPoint(x, y);
+      const pot = this.add.ellipse(base.x, base.y + 4, 18, 9, 0x8c6742, 0.95).setStrokeStyle(1, 0x2d1b10, 0.45);
+      const leaves = this.add.star(base.x, base.y - 9, 7, 7, 18, 0x5faa64, 0.94);
+      this.drawings.push(pot, leaves);
+    };
 
-    for (let i = 0; i < 5; i += 1) {
-      this.drawings.push(this.add.rectangle(890 + i * 28, 292, 16, 46, 0xb89b6d, 0.58).setOrigin(0));
-      this.drawings.push(this.add.rectangle(890 + i * 28, 397, 16, 46, 0x9d8c6b, 0.58).setOrigin(0));
+    const addShelf = (x: number, y: number): void => {
+      this.addIsoBlock(x, y, 118, 34, 34, 0x9b7248, 0x5f3c25, 0x77502e, 0.98);
+      for (let i = 0; i < 9; i += 1) {
+        const bookPoint = this.projectDisplayPoint(x - 44 + i * 11, y - 4, 39);
+        const book = this.add.rectangle(
+          bookPoint.x,
+          bookPoint.y,
+          5,
+          14,
+          i % 3 === 0 ? 0x2e536c : i % 3 === 1 ? 0x8f4d42 : 0xc4a95f,
+          0.96,
+        ).setStrokeStyle(1, 0x1b1611, 0.35);
+        this.drawings.push(book);
+      }
+    };
+
+    const addWindow = (x: number, y: number): void => {
+      const point = this.projectDisplayPoint(x, y, 10);
+      const frame = this.add.rectangle(point.x, point.y, 42, 9, 0xc4edf6, 0.72).setStrokeStyle(2, 0xe7fbff, 0.34);
+      this.drawings.push(frame);
+    };
+
+    const addTable = (x: number, y: number, width = 72, height = 42): void => {
+      this.addIsoBlock(x, y, width, height, 18, 0xa77947, 0x6c472d, 0x875a36, 0.96);
+      this.addIsoBlock(x, y - height / 2 - 16, width * 0.72, 12, 12, 0x6c513b, 0x443326, 0x55402f, 0.86);
+      this.addIsoBlock(x, y + height / 2 + 16, width * 0.72, 12, 12, 0x6c513b, 0x443326, 0x55402f, 0.86);
+    };
+
+    const addEvacArrow = (x: number, y: number, rotation = 0): void => {
+      const point = this.projectDisplayPoint(x, y, 5);
+      const arrow = this.add.triangle(point.x, point.y, 0, -8, 0, 8, 20, 0, 0x7ce39b, 0.86).setRotation(rotation);
+      this.drawings.push(arrow);
+    };
+
+    const shadow = this.add.ellipse(618, 400, 920, 420, 0x050608, 0.32);
+    this.drawings.push(shadow);
+    this.addIsoTile(312, 344, 442, 360, 0x5f6255, 0.94, 0x0f1110);
+    this.addIsoTile(810, 344, 560, 360, 0x7f5b38, 0.95, 0x0f1110);
+    this.addIsoTile(685, 105, 282, 126, 0x6f8793, 0.88, 0x0f1110);
+    this.addIsoTile(901, 105, 150, 126, 0x8a6040, 0.96, 0x0f1110);
+    this.addIsoTile(676, 586, 170, 114, 0x6c7269, 0.88, 0x242723);
+    this.addIsoBlock(665, 524, 94, 32, 20, 0x9f7548, 0x684126, 0x805431, 0.95);
+
+    for (let x = 120; x <= 510; x += 28) {
+      this.addIsoLine(x, 178, x, 510, 0xd0c8a7, 0.11);
+    }
+    for (let y = 190; y <= 506; y += 28) {
+      this.addIsoLine(108, y, 512, y, 0xd0c8a7, 0.1);
+    }
+    for (let x = 560; x <= 1060; x += 36) {
+      this.addIsoLine(x, 184, x, 506, 0xffd9a2, 0.08);
+    }
+    for (let y = 194; y <= 500; y += 36) {
+      this.addIsoLine(560, y, 1060, y, 0xffd9a2, 0.08);
     }
 
-    for (let i = 0; i < 6; i += 1) {
-      this.drawings.push(this.add.rectangle(458 + i * 16, 418, 10, 34, 0xe5dfcf, 0.25).setStrokeStyle(1, 0xd7cfbe, 0.16));
-      this.drawings.push(this.add.rectangle(678 + i * 16, 418, 10, 34, 0xe5dfcf, 0.25).setStrokeStyle(1, 0xd7cfbe, 0.16));
+    for (let row = 0; row < 5; row += 1) {
+      for (let col = 0; col < 3; col += 1) {
+        addShelf(172 + col * 132, 226 + row * 54);
+      }
     }
+
+    for (const x of [150, 300, 450, 874, 980]) {
+      addWindow(x, 522);
+    }
+    for (const y of [82, 114, 146]) {
+      addWindow(874, y);
+    }
+
+    addPottedPlant(112, 190);
+    addPottedPlant(506, 190);
+    addPottedPlant(112, 492);
+    addPottedPlant(506, 492);
+    addPottedPlant(1038, 190);
+    addPottedPlant(1038, 492);
+    addPottedPlant(954, 84);
+
+    this.addIsoBlock(662, 278, 128, 34, 24, 0xa57545, 0x6a4329, 0x865a36, 0.98);
+    this.addIsoBlock(628, 260, 26, 18, 18, 0x40535d, 0x1e2930, 0x2e3c45, 0.98);
+    addPottedPlant(704, 266);
+
+    addTable(610, 388, 54, 74);
+    addTable(610, 468, 54, 74);
+    addTable(1014, 292, 66, 88);
+    addTable(998, 438, 44, 90);
+
+    this.addIsoTile(740, 506, 116, 56, 0x683b49, 0.56, 0x2b1d13);
+    for (let i = 0; i < 7; i += 1) {
+      this.addIsoBlock(740, 438 + i * 8, 92 - i * 5, 12, 12 + i * 2, 0x5c4634, 0x32261d, 0x463529, 0.95);
+    }
+
+    for (let i = 0; i < 8; i += 1) {
+      this.addIsoBlock(900, 62 + i * 13, 72, 8, 8 + i, 0x51402f, 0x2f251d, 0x433326, 0.92);
+    }
+
+    this.addIsoBlock(670, 114, 58, 34, 8, 0xd0b26e, 0x8a744a, 0xaa905d, 0.82);
+    addIsoLabel(650, 104, "STAFF\nONLY", 11, "#1e211c", 22);
+    addIsoLabel(214, 172, "STACKS", 12, "#191711", 20);
+    addIsoLabel(122, 540, "LIBRARY - FIRST FLOOR", 15, "#191711", 24);
+    addIsoLabel(626, 552, "WELCOME", 10, "#191711", 26);
+    addIsoLabel(650, 236, "CIRCULATION", 12);
+    addIsoLabel(734, 438, "ANTIOCHIANA\nSTAIRS", 11);
+
+    this.addIsoTile(810, 413, 560, 14, 0x4aa56f, 0.42, 0x2b5e42);
+    this.addIsoTile(350, 413, 362, 14, 0x4aa56f, 0.42, 0x2b5e42);
+    this.addIsoTile(722, 466, 14, 120, 0x4aa56f, 0.42, 0x2b5e42);
+    for (let i = 0; i < 9; i += 1) {
+      addEvacArrow(210 + i * 88, 413);
+    }
+    addEvacArrow(722, 500, Math.PI / 2);
+    const westExit = this.projectDisplayPoint(168, 413, 10);
+    const southExit = this.projectDisplayPoint(722, 532, 10);
+    this.drawings.push(this.add.star(westExit.x, westExit.y, 5, 9, 18, 0x82b8ff, 0.9));
+    this.drawings.push(this.add.star(southExit.x, southExit.y, 5, 9, 18, 0x82b8ff, 0.9));
   }
 
   private drawArchiveRoom(): void {
@@ -545,9 +696,10 @@ export class GameplayScene extends Phaser.Scene {
 
   private drawProps(location: BuildingId): void {
     for (const prop of zoneProps.filter((entry) => entry.zone === location)) {
-      const sprite = this.add.image(prop.x, prop.y, textureForProp(prop.kind)).setScale(prop.scale ?? 1);
-      if (prop.label) {
-        const label = this.add.text(prop.x - 40, prop.y + 24, prop.label, {
+      const point = this.projectDisplayPoint(prop.x, prop.y, 8);
+      const sprite = this.add.image(point.x, point.y, textureForProp(prop.kind)).setScale(prop.scale ?? (location === "library" ? 0.82 : 1));
+      if (prop.label && location !== "library") {
+        const label = this.add.text(point.x - 40, point.y + 24, prop.label, {
           color: "#d6dfdd",
           fontFamily: "Georgia",
           fontSize: "12px",
@@ -560,10 +712,11 @@ export class GameplayScene extends Phaser.Scene {
 
   private drawNpcs(location: BuildingId): void {
     for (const npc of zoneNpcs.filter((entry) => entry.zone === location)) {
-      const shadow = this.add.ellipse(npc.x, npc.y + 12, 18, 8, 0x000000, 0.16);
-      const sprite = this.add.sprite(npc.x, npc.y, `npc-${npc.palette}`).setScale(1.15);
+      const point = this.projectDisplayPoint(npc.x, npc.y, 6);
+      const shadow = this.add.ellipse(point.x, point.y + 12, 18, 8, 0x000000, 0.16);
+      const sprite = this.add.sprite(point.x, point.y, `npc-${npc.palette}`).setScale(1.15);
       sprite.play(`npc-${npc.palette}-idle`);
-      const name = this.add.text(npc.x - 42, npc.y + 18, npc.name, {
+      const name = this.add.text(point.x - 42, point.y + 18, npc.name, {
         color: "#eff5f2",
         fontFamily: "Georgia",
         fontSize: "13px",
@@ -574,7 +727,8 @@ export class GameplayScene extends Phaser.Scene {
 
   private drawLandmarks(location: BuildingId): void {
     for (const landmark of zoneLandmarks.filter((entry) => entry.zone === location)) {
-      const label = this.add.text(landmark.x - 65, landmark.y, landmark.title, {
+      const point = this.projectDisplayPoint(landmark.x, landmark.y, location === "library" ? -34 : 24);
+      const label = this.add.text(point.x - 65, point.y, landmark.title, {
         color: "#f3e2a5",
         fontFamily: "Georgia",
         fontSize: "14px",
@@ -759,7 +913,7 @@ export class GameplayScene extends Phaser.Scene {
   }
 
   private tryInteract(): void {
-    const playerPoint = new Phaser.Math.Vector2(this.player.x, this.player.y);
+    const playerPoint = new Phaser.Math.Vector2(this.state.player.position.x, this.state.player.position.y);
 
     const portal = this.portals.find((entry) =>
       Phaser.Math.Distance.BetweenPoints(playerPoint, entry) < 80,
@@ -804,6 +958,15 @@ export class GameplayScene extends Phaser.Scene {
       this.store.setMessage("Nothing nearby responds. The campus is weird, not generous.");
     }
   }
+}
+
+function isTextInputActive(): boolean {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) {
+    return false;
+  }
+
+  return active.matches("input, textarea, select, [contenteditable='true']");
 }
 
 function textureForProp(kind: ZoneProp["kind"]): string {
